@@ -16,6 +16,7 @@
          :content="post.content"
          :created-at="post.createdAt"
          @click="goPage(post.id)"
+         @modal="openModal(post)"
         ></PostItem>
       </div>
     </div>
@@ -32,6 +33,25 @@
         </li>
       </ul>
     </nav>
+    
+    <Teleport to="#modal">
+      <PostModal v-model="show" :title="modalTitle" :content="modalContent" :created-at="modalCreatedAt"/>
+    </Teleport>
+    <!-- <AppModal :show="show" title="게시글" @close="closeModal">
+      <template #default>
+        <div class="row g-3">
+          <div class="col-3">제목</div>
+          <div class="col-9">{{ modalTitle }}</div>
+          <div class="col-3">내용</div>
+          <div class="col-9">{{ modalContent }}</div>
+          <div class="col-3">등록일</div>
+          <div class="col-9">{{ modalCreatedAt }}</div>
+        </div>
+      </template>
+      <template #actions>
+        <button type="button" class="btn btn-secondary" @click="closeModal">닫기</button>
+      </template>
+    </AppModal> -->
     <hr class="my-5"/>
     <AppCard>
       <PostDetailView :id="1"></PostDetailView>
@@ -43,6 +63,7 @@
 import PostItem from '../../components/posts/PostItem.vue';
 import PostDetailView from './PostDetailView.vue';
 import AppCard from '@/components/AppCard.vue';
+import PostModal from '@/components/posts/PostModal.vue';
 import { getPosts } from '@/api/posts';
 import { ref, computed, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
@@ -80,6 +101,18 @@ const goPage = (id) => {
       id,
     }
   })
+}
+
+// modal
+const show = ref(false);
+const modalTitle = ref('');
+const modalContent = ref('');
+const modalCreatedAt = ref('');
+const openModal = ({title, content, createdAt}) => {
+  show.value = true;
+  modalTitle.value = title;
+  modalContent.value = content;
+  modalCreatedAt.value = createdAt;
 }
 </script>
 
