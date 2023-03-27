@@ -76,7 +76,6 @@ const params = ref({
   _order: 'desc',
   _page: 1,
   _limit: 3,
-  title_like: '9',
 });
 // pagination
 const totalCount = ref(0);
@@ -84,7 +83,7 @@ const pageCount = computed(() => Math.ceil(totalCount.value / params.value._limi
 
 const fetchPosts = async () => {
   try {
-    const {data, headers } = await getPosts(params.value); // response의 data만 받아오기 위해 구조분해 할당
+    const { data, headers } = await getPosts(params.value); // response의 data만 받아오기 위해 구조분해 할당
     posts.value = data;
     totalCount.value = headers['x-total-count'];
   } catch (error) {
