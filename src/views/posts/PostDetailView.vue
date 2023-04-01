@@ -1,9 +1,15 @@
 <template>
-  <div>
+  <AppLoading v-if="loading"></AppLoading>
+
+  <AppError v-else-if="error" :message="error.message"></AppError>
+  
+  <div v-else>
     <h2>{{ post.title }}</h2>
+    <p>id: {{ props.id }}, isOdd: {{ isOdd }}</p>
     <p>{{ post.content }}</p>
-    <p class="text-muted">{{ post.createdAt }}</p>
+    <p class="text-muted">{{ $dayjs(post.createdAt).format('YYYY. MM. DD HH:mm:ss') }}</p>
     <hr class="my-4"/>
+    <AppError v-if="removeError" :message="removeError.message"/>
     <div class="row g-2">
       <div class="col-auto">
         <button class="btn btn-outline-dark">이전글</button>
@@ -19,67 +25,54 @@
         <button class="btn btn-outline-primary" @click="goEditPage">수정</button>
       </div>
       <div class="col-auto">
-        <button class="btn btn-outline-danger" @click="remove">삭제</button>
+        <button class="btn btn-outline-danger" @click="remove" :disabled="removeLoading">
+          <template v-if="removeLoading">
+            <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+            <span class="visually-hidden">Loading...</span>
+          </template>
+          <template v-else>삭제</template>
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { computed, toRef, toRefs} from 'vue';
 import { useRouter } from 'vue-router';
-import { getPostById, deletePost } from '@/api/posts';
-import { ref } from 'vue';
+import { useAxios } from '@/hooks/useAxios';
+import { useAlert } from '@/composables/alert';
+import { useNumber } from '@/composables/number';
 
 const props = defineProps({
-  id: String,
+  id: [String, Number],
 })
 
 const router = useRouter();
+// const idRef = toRef(props, 'id');
+const { id: idRef } = toRefs(props);
+const { isOdd } = useNumber(idRef); // props.id는 반응형 잃음
+const { vAlert, vSuccese } = useAlert();
+const url = computed(() => `/posts/${props.id}`);
+const {error, loading, data: post} = useAxios(url);
 
-/*
-* ref
-* 장) 객체 할당 가능
-* 장) 일관성 유지
-* 단) 접근 할때 form.value.title, form.value.content
-*
-* reactive
-* 장) 접근 할때 form.title, form.content
-* 단) 객체 할당 불가능
-*/
-const post = ref({
-  title: null,
-  content: null,
-  createdAt: null,
-});
-// let form = reactive({});
-// reactive()
-const fetchPost = async () => {
-  try {
-    const { data } = await getPostById(props.id);
-    setPost(data); // 원하는 거만 가져오기
-    // post.value = { ...data }; // ref로 한꺼번에 객체 할당.
-    // form = { ...data }; // 반응형을 잃음. 아래와 같이 해줘야함
-    // form.title = data.title;
-    // form.content = data.content;
-  } catch (error) {
-    console.error(error);
-  }
-}
-const setPost = ({title, content, createdAt}) => {
-  post.value.title = title;
-  post.value.content = content;
-  post.value.createdAt = createdAt;
-}
-fetchPost();
+const { error: removeError, loading: removeLoading, execute } = useAxios(
+  `/posts/${props.id}`,
+  { method: 'delete' },
+  {
+    immediate: false,
+    onSuccess: () => {
+      vSuccese('삭제가 완료되었습니다.');
+      router.push({ name: 'PostList' });
+    },
+    onError: (err) => {
+      vAlert(err.message);
+    },
+  },
+);
 const remove = async () => {
-  try {
     if (!confirm('삭제 하시겠습니까?')) return;
-    console.log(props.id);
-    await deletePost(props.id);
-    router.push({name: 'PostList'});
-  } catch (error) {
-    console.error(error);
-  }
+  execute();
 }
 const goListPage = () => router.push({ name: 'PostList' });
 const goEditPage = () => router.push({ name: 'PostEdit', params: { id: props.id } });

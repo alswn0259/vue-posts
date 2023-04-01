@@ -1,63 +1,71 @@
 <template>
-  <div>
+  <AppLoading v-if="loading"></AppLoading>
+
+  <AppError v-else-if="error" :message="error.message"></AppError>
+
+  <div v-else>
     <h2>게시글 수정</h2>
     <hr class="my-4" />
-    <form @submit.prevent="edit">
-      <div class="mb-3">
-        <label for="title" class="form-label">제목</label>
-        <input v-model="form.title" type="text" class="form-control" id="title"/>
-      </div>
-      <div class="mb-3">
-        <label for="content" class="form-label">내용</label>
-        <textarea v-model="form.content" class="form-control" id="content" rows="3"></textarea>
-      </div>
-      <div class="pt-4">
-        <button type="button" class="btn btn-outline-danger me-2" @click="goDetailPage">취소</button>
-        <button class="btn btn-primary">수정</button>
-      </div>
-    </form>
+    <AppError v-if="editError" :message="editError.message"/>
+    <PostForm 
+      v-model:title="form.title" 
+      v-model:content="form.content" 
+      @submit.prevent="edit"
+    >
+      <template #actions>
+        <button 
+          type="button" 
+          class="btn btn-outline-danger" 
+          @click="goDetailPage"
+        >
+          취소
+        </button>
+        <button class="btn btn-primary" :disabled="editLoading">
+          <template v-if="editLoading">
+            <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+            <span class="visually-hidden">Loading...</span>
+          </template>
+          <template v-else>수정</template>
+        </button>
+      </template>
+    </PostForm>
+    <!-- <AppAlert :show="showAlert" :message="alertMessage" :type="alertType"></AppAlert> -->
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { getPostById, updatePost } from '@/api/posts';
+import { useRoute, useRouter } from 'vue-router';;
+import PostForm from './PostForm.vue';
+import { useAlert } from '@/composables/alert';
+import { useAxios } from '@/hooks/useAxios';
+
+const { vAlert, vSuccese } = useAlert();
 
 const route = useRoute();
 const router = useRouter();
 const id = route.params.id;
 
-const form = ref({
-  title: null,
-  content: null,
-})
-const fetchPost = async () => {
-  try {
-    const { data } = await getPostById(id);
-    setForm(data); // 원하는 거만 가져오기
-    // post.value = { ...data }; // ref로 한꺼번에 객체 할당.
-    // form = { ...data }; // 반응형을 잃음. 아래와 같이 해줘야함
-    // form.title = data.title;
-    // form.content = data.content;
-  } catch (error) {
-    console.error(error);
-  }
-}
-const setForm = ({title, content}) => {
-  form.value.title = title;
-  form.value.content = content;
-};
-fetchPost();
-const edit = async () => {
-  try {
-    await updatePost(id, {...form.value});
-    router.push({ name: 'PostDetail', params: { id }});
-  } catch (error) {
-    console.error(error);
-  }
-};
+const { data: form, error, loading } = useAxios(`/posts/${id}`)
 
+const { error: editError, loading: editLoading, execute } = useAxios(
+  `/posts/${id}`,
+  { method: 'patch' },
+  {
+    immediate: false,
+    onSuccess: () => {
+      router.push({ name: 'PostDetail', params: { id }});
+      vSuccese('수정이 완료되었습니다!');
+    },
+    onError: () => {
+      vAlert(error.message);
+    },
+  });
+
+const edit = () => {
+  execute({
+    ...form.value,
+  });
+};
 
 const goDetailPage = () => {
   router.push({ name: 'PostDetail', params: { id: id } });
